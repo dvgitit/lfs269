@@ -1,0 +1,60 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  flux_install:
+    desc: lab6
+    cmds:
+      - cmd: echo scoop install main/flux
+        platforms: [windows/amd64, darwin]
+      - cmd: arkade get flux
+        platforms: [linux]
+    status:
+      - flux
+
+  check_pre:
+    cmds:
+      - echo pre ok
+    status:
+      - kubectl get nodes
+      - kubectl config get-contexts
+      - kubectl get pods --all-namespaces
+      - kubectl get crds
+      - flux check --pre
+
+  flux_bootstrap:
+    desc: lab6
+    deps: [check_pre]
+    cmds:
+      - |
+        flux bootstrap github --owner=$GITHUB_USER \
+        --repository=flux-lfs269-infra \
+        --branch=main \
+        --path=./clusters/dev \
+        --personal \
+        --log-level=debug \
+        --network-policy=false \
+        --components=source-controller,kustomize-controller
+
+  flux-deploy-check:
+    desc: lab6
+    cmds:
+      - flux check
+      - kubectl get crds
+      - kubectl get pods -n flux-system
+      - kubectl get all -n flux-system
+      - kubectl get clusterroles,clusterrolebindings,serviceaccounts -n flux-system -l "app.kubernetes.io/instance=flux-system"
+      - flux get kustomizations
+      - flux get sources git
+
+  create-git-source:
+    cmds:
+      - |
+        echo flux create source git instavote \
+        --url=https://github.com/$GITHUB_USER/instavote.git \
+        --branch=main \
+        --interval=30s
